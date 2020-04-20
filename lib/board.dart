@@ -159,6 +159,10 @@ class BoardPainter extends CustomPainter {
   void _drawSteps(Canvas canvas, Size size) {
     double verticalOffset;
 
+    var arrowPaint = Paint()
+      ..strokeWidth = 2
+      ..style = PaintingStyle.stroke..strokeCap=StrokeCap.round;
+
     for (int homeIndex = 0; homeIndex < 4; homeIndex++) {
       verticalOffset = _homeSize;
       switch (homeIndex) {
@@ -190,7 +194,24 @@ class BoardPainter extends CustomPainter {
         var unit = Rect.fromLTWH(
             pos * _unitSize, verticalOffset, _unitSize, _unitSize);
 
-        if (pos > 0) canvas.drawRect(unit, _fillPaint);
+        if (pos > 0)
+          canvas.drawRect(unit, _fillPaint);
+        else {
+          var arrowPadding = unit.width / 4;
+          var arrowWingGap = arrowPadding / 1.5;
+          var arrowTip =
+              Offset(unit.right - arrowPadding, unit.bottom - unit.height / 2);
+          arrowPaint..color = _fillPaint.color;
+
+          canvas.drawPath(
+              Path()
+                ..moveTo(unit.left + arrowPadding, arrowTip.dy)
+                ..lineTo(arrowTip.dx, arrowTip.dy)
+                ..lineTo(arrowTip.dx - arrowWingGap, arrowTip.dy - arrowWingGap)
+                ..moveTo(arrowTip.dx - arrowWingGap, arrowTip.dy + arrowWingGap)
+                ..lineTo(arrowTip.dx, arrowTip.dy),
+              arrowPaint);
+        }
 
         canvas.drawRect(unit, _strokePaint);
       }
