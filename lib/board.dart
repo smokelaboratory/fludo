@@ -3,7 +3,7 @@ import 'package:flutter/material.dart';
 import 'dart:math';
 
 class BoardPainter extends CustomPainter {
-  double _unitSize, _homeStartOffset, _homeSize, _canvasCenter;
+  double _stepSize, _homeStartOffset, _homeSize, _canvasCenter;
 
   Paint _fillPaint = Paint()..style = PaintingStyle.fill;
   Paint _strokePaint = Paint()
@@ -13,9 +13,9 @@ class BoardPainter extends CustomPainter {
 
   @override
   void paint(Canvas canvas, Size size) {
-    _unitSize = size.width / 15;
-    _homeStartOffset = _unitSize * 9;
-    _homeSize = _unitSize * 6;
+    _stepSize = size.width / 15;
+    _homeStartOffset = _stepSize * 9;
+    _homeSize = _stepSize * 6;
     _canvasCenter = size.width / 2;
 
     _drawHome(canvas, size);
@@ -58,26 +58,26 @@ class BoardPainter extends CustomPainter {
     /**
      * Draw inner home
      */
-    var innerHomeSize = _homeSize - 2 * _unitSize;
+    var innerHomeSize = _homeSize - 2 * _stepSize;
 
     _fillPaint.color = Colors.white;
-    var innerHome1 = Rect.fromLTWH(home1.left + _unitSize,
-        home1.top + _unitSize, innerHomeSize, innerHomeSize);
+    var innerHome1 = Rect.fromLTWH(home1.left + _stepSize,
+        home1.top + _stepSize, innerHomeSize, innerHomeSize);
     canvas.drawRect(innerHome1, _fillPaint);
     canvas.drawRect(innerHome1, _strokePaint);
 
-    var innerHome2 = Rect.fromLTWH(home2.left + _unitSize,
-        home2.top + _unitSize, innerHomeSize, innerHomeSize);
+    var innerHome2 = Rect.fromLTWH(home2.left + _stepSize,
+        home2.top + _stepSize, innerHomeSize, innerHomeSize);
     canvas.drawRect(innerHome2, _fillPaint);
     canvas.drawRect(innerHome2, _strokePaint);
 
-    var innerHome3 = Rect.fromLTWH(home3.left + _unitSize,
-        home3.top + _unitSize, innerHomeSize, innerHomeSize);
+    var innerHome3 = Rect.fromLTWH(home3.left + _stepSize,
+        home3.top + _stepSize, innerHomeSize, innerHomeSize);
     canvas.drawRect(innerHome3, _fillPaint);
     canvas.drawRect(innerHome3, _strokePaint);
 
-    var innerHome4 = Rect.fromLTWH(home4.left + _unitSize,
-        home4.top + _unitSize, innerHomeSize, innerHomeSize);
+    var innerHome4 = Rect.fromLTWH(home4.left + _stepSize,
+        home4.top + _stepSize, innerHomeSize, innerHomeSize);
     canvas.drawRect(innerHome4, _fillPaint);
     canvas.drawRect(innerHome4, _strokePaint);
 
@@ -182,17 +182,17 @@ class BoardPainter extends CustomPainter {
 
       for (int pos = 0; pos < 6; pos++) {
         var unit = Rect.fromLTWH(
-            pos * _unitSize, verticalOffset, _unitSize, _unitSize);
+            pos * _stepSize, verticalOffset, _stepSize, _stepSize);
 
         if (pos == 1) canvas.drawRect(unit, _fillPaint);
 
         canvas.drawRect(unit, _strokePaint);
       }
 
-      verticalOffset += _unitSize;
+      verticalOffset += _stepSize;
       for (int pos = 0; pos < 6; pos++) {
         var unit = Rect.fromLTWH(
-            pos * _unitSize, verticalOffset, _unitSize, _unitSize);
+            pos * _stepSize, verticalOffset, _stepSize, _stepSize);
 
         if (pos > 0)
           canvas.drawRect(unit, _fillPaint);
@@ -216,13 +216,13 @@ class BoardPainter extends CustomPainter {
         canvas.drawRect(unit, _strokePaint);
       }
 
-      verticalOffset += _unitSize;
+      verticalOffset += _stepSize;
       for (int pos = 0; pos < 6; pos++) {
         var unit = Rect.fromLTWH(
-            pos * _unitSize, verticalOffset, _unitSize, _unitSize);
+            pos * _stepSize, verticalOffset, _stepSize, _stepSize);
 
         if (pos == 2) {
-          var safeSpotRadius = _unitSize / 4;
+          var safeSpotRadius = _stepSize / 4;
           _fillPaint.color = AppColors.safeSpot;
           canvas.drawCircle(unit.center, safeSpotRadius, _fillPaint);
           canvas.drawCircle(unit.center, safeSpotRadius, _strokePaint);

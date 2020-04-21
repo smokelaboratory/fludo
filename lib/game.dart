@@ -1,4 +1,5 @@
 import 'package:fludo/board.dart';
+import 'package:fludo/players.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 
@@ -26,6 +27,7 @@ class _FludoGameState extends State<FludoGame> {
           aspectRatio: 1,
           child: CustomPaint(
             painter: BoardPainter(),
+            foregroundPainter: PlayersPainter(),
           ),
         ),
       )),
