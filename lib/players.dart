@@ -23,54 +23,68 @@ class PlayersPainter extends CustomPainter {
 
     _calculatePlayerTracks(canvas);
 
-    for (int i = 0; i < _playerTracks[0].length; i++)
-      _drawPlayerShape(canvas, _playerTracks[0][i], AppColors.player2);
+    print(_playerTracks[1]);
+    for (int i = 0; i < _playerTracks[2].length; i++)
+      _drawPlayerShape(canvas, _playerTracks[2][i], AppColors.player1);
   }
 
   void _calculatePlayerTracks(Canvas canvas) {
-    
-    for (int playerIndex = 0; playerIndex < 3; playerIndex++) {
+    // canvas.save();
+    for (int playerIndex = 0; playerIndex < 4; playerIndex++) {
       List<Rect> playerTrack = List();
 
+      Rect prevRect;
+      Offset prevOffset;
+      for (int stepIndex = 0; stepIndex < 57; stepIndex++) {
+        if (stepIndex == 0) {
+          var offset = _stepSize / 2;
+          prevOffset = Offset(_stepSize + offset, _homeSize + offset);
+        } else if (stepIndex < 5 ||
+            stepIndex > 50 ||
+            stepIndex > 18 && stepIndex < 24 ||
+            stepIndex > 10 && stepIndex < 13)
+          prevOffset =
+              Offset(prevRect.center.dx + _stepSize, prevRect.center.dy);
+        else if (stepIndex == 5)
+          prevOffset = Offset(
+              prevRect.center.dx + _stepSize, prevRect.center.dy - _stepSize);
+        else if (stepIndex < 11 ||
+            stepIndex > 38 && stepIndex < 44 ||
+            stepIndex == 50)
+          prevOffset =
+              Offset(prevRect.center.dx, prevRect.center.dy - _stepSize);
+        else if (stepIndex < 18 ||
+            stepIndex > 31 && stepIndex < 37 ||
+            stepIndex > 18 && stepIndex < 26)
+          prevOffset =
+              Offset(prevRect.center.dx, prevRect.center.dy + _stepSize);
+        else if (stepIndex == 18)
+          prevOffset = Offset(
+              prevRect.center.dx + _stepSize, prevRect.center.dy + _stepSize);
+        else if (stepIndex < 31 ||
+            stepIndex > 31 && stepIndex < 39 ||
+            stepIndex > 44 && stepIndex < 50)
+          prevOffset =
+              Offset(prevRect.center.dx - _stepSize, prevRect.center.dy);
+        else if (stepIndex == 31)
+          prevOffset = Offset(
+              prevRect.center.dx - _stepSize, prevRect.center.dy + _stepSize);
+        else if (stepIndex == 44)
+          prevOffset = Offset(
+              prevRect.center.dx - _stepSize, prevRect.center.dy - _stepSize);
+
+        prevRect = Rect.fromCenter(
+            center: prevOffset, width: _stepSize, height: _stepSize);
+        playerTrack.add(prevRect);
+      }
 
       canvas.translate(_canvasCenter, _canvasCenter);
-      canvas.rotate(pi/2);
+      canvas.rotate(pi / 2);
       canvas.translate(-_canvasCenter, -_canvasCenter);
-      canvas.save();
 
-      Rect prevRect;
-      for (int stepIndex = 0; stepIndex < 11; stepIndex++) {
-        if (stepIndex == 0) {
-          prevRect = Rect.fromLTWH(_stepSize, _homeSize, _stepSize, _stepSize);
-          playerTrack.add(prevRect);
-        } else if (stepIndex < 5) {
-          prevRect = Rect.fromCenter(
-              center:
-                  Offset(prevRect.center.dx + _stepSize, prevRect.center.dy),
-              width: _stepSize,
-              height: _stepSize);
-          playerTrack.add(prevRect);
-        } else if (stepIndex == 5) {
-          prevRect = Rect.fromCenter(
-              center: Offset(prevRect.center.dx + _stepSize,
-                  prevRect.center.dy - _stepSize),
-              width: _stepSize,
-              height: _stepSize);
-          playerTrack.add(prevRect);
-        } else if (stepIndex < 11) {
-          prevRect = Rect.fromCenter(
-              center:
-                  Offset(prevRect.center.dx, prevRect.center.dy - _stepSize),
-              width: _stepSize,
-              height: _stepSize);
-          playerTrack.add(prevRect);
-        } else if (stepIndex < 15) {
-        } else if (stepIndex < 21) {}
-      }
       _playerTracks.add(playerTrack);
-
-    
     }
+    // canvas.restore();
   }
 
   void _drawPlayers(Canvas canvas) {}
