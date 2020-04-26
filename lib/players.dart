@@ -1,9 +1,13 @@
 import 'package:fludo/colors.dart';
 import 'package:flutter/cupertino.dart';
 import 'package:flutter/material.dart';
-import 'dart:math';
 
 class PlayersPainter extends CustomPainter {
+  Rect rect;
+  Function(List<Rect>) click;
+
+  PlayersPainter(this.rect, this.click);
+
   List<List<Rect>> _playerTracks = List();
 
   double _playerSize, _playerInnerSize, _homeSize, _stepSize, _canvasCenter;
@@ -21,14 +25,21 @@ class PlayersPainter extends CustomPainter {
     _playerSize = _stepSize / 3;
     _playerInnerSize = _playerSize / 2;
 
-    _calculatePlayerTracks(canvas);
+    _calculatePlayerTracks();
 
-    print(_playerTracks[1]);
-    for (int i = 0; i < _playerTracks[2].length; i++)
-      _drawPlayerShape(canvas, _playerTracks[2][i], AppColors.player1);
+    // _anim = Tween(begin: _playerTracks[0][0], end: _playerTracks[0][0])
+    // .animate(_animCont);
+
+    _drawPlayerShape(
+        canvas,
+        rect ?? Rect.fromLTWH(0, 0, _playerSize, _playerSize),
+        AppColors.player1);
+
+    // for (int i = 0; i < _playerTracks[2].length; i++)
+    // _drawPlayerShape(canvas, _playerTracks[2][i], AppColors.player1);
   }
 
-  void _calculatePlayerTracks(Canvas canvas) {
+  void _calculatePlayerTracks() {
     // canvas.save();
     for (int playerIndex = 0; playerIndex < 4; playerIndex++) {
       List<Rect> playerTrack = List();
@@ -78,16 +89,20 @@ class PlayersPainter extends CustomPainter {
         playerTrack.add(prevRect);
       }
 
-      canvas.translate(_canvasCenter, _canvasCenter);
-      canvas.rotate(pi / 2);
-      canvas.translate(-_canvasCenter, -_canvasCenter);
+      // canvas.translate(_canvasCenter, _canvasCenter);
+      // canvas.rotate(pi / 2);
+      // canvas.translate(-_canvasCenter, -_canvasCenter);
 
       _playerTracks.add(playerTrack);
     }
     // canvas.restore();
   }
 
-  void _drawPlayers(Canvas canvas) {}
+  @override
+  bool hitTest(Offset position) {
+    click(_playerTracks[0]);
+    return super.hitTest(position);
+  }
 
   void _drawPlayerShape(Canvas canvas, Rect rect, Color color) {
     _playerPaint.color = color;
