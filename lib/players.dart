@@ -3,14 +3,16 @@ import 'package:flutter/cupertino.dart';
 import 'package:flutter/material.dart';
 
 class PlayersPainter extends CustomPainter {
-  Rect rect;
-  Function(List<Rect>) click;
+  List<Rect> playerCurrentSpots;
+  Function(Offset) boardClickListener;
+  Color playerColor;
 
-  PlayersPainter(this.rect, this.click);
+  PlayersPainter(
+      {@required this.playerCurrentSpots,
+      @required this.playerColor,
+      @required this.boardClickListener});
 
-  List<List<Rect>> _playerTracks = List();
-
-  double _playerSize, _playerInnerSize, _homeSize, _stepSize, _canvasCenter;
+  double _playerSize, _playerInnerSize, _stepSize;
   Paint _playerPaint = Paint()..style = PaintingStyle.fill;
   Paint _strokePaint = Paint()
     ..style = PaintingStyle.stroke
@@ -20,87 +22,21 @@ class PlayersPainter extends CustomPainter {
   @override
   void paint(Canvas canvas, Size size) {
     _stepSize = size.width / 15;
-    _homeSize = _stepSize * 6;
-    _canvasCenter = size.width / 2;
     _playerSize = _stepSize / 3;
     _playerInnerSize = _playerSize / 2;
 
-    _calculatePlayerTracks();
-
-    // _anim = Tween(begin: _playerTracks[0][0], end: _playerTracks[0][0])
-    // .animate(_animCont);
-
-    _drawPlayerShape(
-        canvas,
-        rect ?? Rect.fromLTWH(0, 0, _playerSize, _playerSize),
-        AppColors.player1);
-
-    // for (int i = 0; i < _playerTracks[2].length; i++)
-    // _drawPlayerShape(canvas, _playerTracks[2][i], AppColors.player1);
-  }
-
-  void _calculatePlayerTracks() {
-    // canvas.save();
-    for (int playerIndex = 0; playerIndex < 4; playerIndex++) {
-      List<Rect> playerTrack = List();
-
-      Rect prevRect;
-      Offset prevOffset;
-      for (int stepIndex = 0; stepIndex < 57; stepIndex++) {
-        if (stepIndex == 0) {
-          var offset = _stepSize / 2;
-          prevOffset = Offset(_stepSize + offset, _homeSize + offset);
-        } else if (stepIndex < 5 ||
-            stepIndex > 50 ||
-            stepIndex > 18 && stepIndex < 24 ||
-            stepIndex > 10 && stepIndex < 13)
-          prevOffset =
-              Offset(prevRect.center.dx + _stepSize, prevRect.center.dy);
-        else if (stepIndex == 5)
-          prevOffset = Offset(
-              prevRect.center.dx + _stepSize, prevRect.center.dy - _stepSize);
-        else if (stepIndex < 11 ||
-            stepIndex > 38 && stepIndex < 44 ||
-            stepIndex == 50)
-          prevOffset =
-              Offset(prevRect.center.dx, prevRect.center.dy - _stepSize);
-        else if (stepIndex < 18 ||
-            stepIndex > 31 && stepIndex < 37 ||
-            stepIndex > 18 && stepIndex < 26)
-          prevOffset =
-              Offset(prevRect.center.dx, prevRect.center.dy + _stepSize);
-        else if (stepIndex == 18)
-          prevOffset = Offset(
-              prevRect.center.dx + _stepSize, prevRect.center.dy + _stepSize);
-        else if (stepIndex < 31 ||
-            stepIndex > 31 && stepIndex < 39 ||
-            stepIndex > 44 && stepIndex < 50)
-          prevOffset =
-              Offset(prevRect.center.dx - _stepSize, prevRect.center.dy);
-        else if (stepIndex == 31)
-          prevOffset = Offset(
-              prevRect.center.dx - _stepSize, prevRect.center.dy + _stepSize);
-        else if (stepIndex == 44)
-          prevOffset = Offset(
-              prevRect.center.dx - _stepSize, prevRect.center.dy - _stepSize);
-
-        prevRect = Rect.fromCenter(
-            center: prevOffset, width: _stepSize, height: _stepSize);
-        playerTrack.add(prevRect);
-      }
-
-      // canvas.translate(_canvasCenter, _canvasCenter);
-      // canvas.rotate(pi / 2);
-      // canvas.translate(-_canvasCenter, -_canvasCenter);
-
-      _playerTracks.add(playerTrack);
-    }
-    // canvas.restore();
+    print(playerCurrentSpots);
+    for (int index = 0; index < playerCurrentSpots.length; index++)
+      _drawPlayerShape(
+          canvas,
+          playerCurrentSpots[index] ??
+              Rect.fromLTWH(0, 0, _playerSize, _playerSize),
+          playerColor);
   }
 
   @override
   bool hitTest(Offset position) {
-    click(_playerTracks[0]);
+    boardClickListener(position);
     return super.hitTest(position);
   }
 
