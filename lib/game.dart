@@ -1,4 +1,5 @@
 import 'package:fludo/board.dart';
+import 'package:fludo/click_surface.dart';
 import 'package:fludo/colors.dart';
 import 'package:fludo/players.dart';
 import 'package:flutter/material.dart';
@@ -12,36 +13,65 @@ class FludoGame extends StatefulWidget {
 class _FludoGameState extends State<FludoGame> with TickerProviderStateMixin {
   AnimationController _forwardAnimCont;
   AnimationController _reverseAnimCont;
-  Animation<Rect> _anim;
+  Animation<List<Rect>> _anim;
 
-  int currentPost = 0;
+  int currentPost = 50, _currentTurn = 0, _selectedPawnIndex;
   List<List<List<Rect>>> _playerTracks;
+  List<List<Rect>> _pawns = List();
+  List<List<int>> _pawnCurrentTrackIndex = List();
 
   @override
   void initState() {
     super.initState();
 
     _reverseAnimCont =
-        AnimationController(vsync: this, duration: Duration(milliseconds: 10));
+        AnimationController(vsync: this, duration: Duration(milliseconds: 15));
     _forwardAnimCont =
-        AnimationController(vsync: this, duration: Duration(milliseconds: 150));
-    _anim = Tween<Rect>().animate(_forwardAnimCont);
+        AnimationController(vsync: this, duration: Duration(milliseconds:15));
 
     SystemChrome.setEnabledSystemUIOverlays([]);
 
     _forwardAnimCont.addStatusListener((status) {
       if (status == AnimationStatus.completed) {
-        _forwardAnimCont.reset();
-        _anim = Tween(
-                begin: _playerTracks[0][0][currentPost],
-                end: _playerTracks[0][0][--currentPost])
-            .animate(_forwardAnimCont);
-        _forwardAnimCont.forward();
+        if (currentPost !=0) {
+          _forwardAnimCont.reset();
+          _anim = Tween(begin: [
+            _playerTracks[_currentTurn][_selectedPawnIndex][currentPost],
+            _playerTracks[_currentTurn][1][0],
+            _playerTracks[_currentTurn][2][0],
+            _playerTracks[_currentTurn][3][0]
+          ], end: [
+            _playerTracks[_currentTurn][_selectedPawnIndex][--currentPost],
+            _playerTracks[_currentTurn][1][0],
+            _playerTracks[_currentTurn][2][0],
+            _playerTracks[_currentTurn][3][0]
+          ]).animate(_forwardAnimCont);
+          _forwardAnimCont.forward();
+        }
+        // else
+        // _currentTurn = (_currentTurn + 1) % 4;
       }
     });
 
     WidgetsBinding.instance.addPostFrameCallback((_) {
-      setState(() {});
+      setState(() {
+        //saves initial players' positions in the [_players] list
+        for (int playerIndex = 0;
+            playerIndex < _playerTracks.length;
+            playerIndex++) {
+          List<Rect> player = List();
+          for (int trackIndex = 0;
+              trackIndex < _playerTracks[playerIndex].length;
+              trackIndex++)
+            player.add(_playerTracks[playerIndex][trackIndex][0]);
+
+          _pawnCurrentTrackIndex.add([0, 0, 0, 0]); //current position
+          _pawns.add(player);
+        }
+
+        _anim = Tween<List<Rect>>(begin: _pawns[0], end: _pawns[0])
+            .animate(_forwardAnimCont);
+      });
     });
   }
 
@@ -65,20 +95,23 @@ class _FludoGameState extends State<FludoGame> with TickerProviderStateMixin {
                   }),
                 ),
               ),
+              SizedBox.expand(child: CustomPaint(
+                painter: ClickSurface(clickOffset: (clickOffset) {
+                  //blink who's turn
+                  _handleClick(clickOffset);
+                }),
+              )),
               _playerTracks == null
                   ? Container()
                   : SizedBox.expand(
                       child: AnimatedBuilder(
                         builder: (_, child) => CustomPaint(
-                            painter: PlayersPainter(
-                                playerCurrentSpots: [
-                              _playerTracks[0][0][0],
-                              _playerTracks[0][1][0],
-                              _playerTracks[0][2][0],
-                              _playerTracks[0][3][0]
-                            ],
-                                playerColor: AppColors.player1,
-                                boardClickListener: (clickOffset) {})),
+                            painter: PlayersPainter(playerCurrentSpots: [
+                          _anim.value[0],
+                          _anim.value[1],
+                          _anim.value[2],
+                          _anim.value[3]
+                        ], playerColor: AppColors.player1)),
                         animation: _anim,
                       ),
                     ),
@@ -87,15 +120,12 @@ class _FludoGameState extends State<FludoGame> with TickerProviderStateMixin {
                   : SizedBox.expand(
                       child: AnimatedBuilder(
                         builder: (_, child) => CustomPaint(
-                            painter: PlayersPainter(
-                                playerCurrentSpots: [
-                              _playerTracks[1][0][0],
-                              _playerTracks[1][1][0],
-                              _playerTracks[1][2][0],
-                              _playerTracks[1][3][0]
-                            ],
-                                playerColor: AppColors.player2,
-                                boardClickListener: (clickOffset) {})),
+                            painter: PlayersPainter(playerCurrentSpots: [
+                          _pawns[1][0],
+                          _pawns[1][1],
+                          _pawns[1][2],
+                          _pawns[1][3]
+                        ], playerColor: AppColors.player2)),
                         animation: _anim,
                       ),
                     ),
@@ -104,15 +134,12 @@ class _FludoGameState extends State<FludoGame> with TickerProviderStateMixin {
                   : SizedBox.expand(
                       child: AnimatedBuilder(
                         builder: (_, child) => CustomPaint(
-                            painter: PlayersPainter(
-                                playerCurrentSpots: [
-                              _playerTracks[2][0][0],
-                              _playerTracks[2][1][0],
-                              _playerTracks[2][2][0],
-                              _playerTracks[2][3][0]
-                            ],
-                                playerColor: AppColors.player3,
-                                boardClickListener: (clickOffset) {})),
+                            painter: PlayersPainter(playerCurrentSpots: [
+                          _pawns[2][0],
+                          _pawns[2][1],
+                          _pawns[2][2],
+                          _pawns[2][3]
+                        ], playerColor: AppColors.player3)),
                         animation: _anim,
                       ),
                     ),
@@ -121,15 +148,12 @@ class _FludoGameState extends State<FludoGame> with TickerProviderStateMixin {
                   : SizedBox.expand(
                       child: AnimatedBuilder(
                         builder: (_, child) => CustomPaint(
-                            painter: PlayersPainter(
-                                playerCurrentSpots: [
-                              _playerTracks[3][0][0],
-                              _playerTracks[3][1][0],
-                              _playerTracks[3][2][0],
-                              _playerTracks[3][3][0]
-                            ],
-                                playerColor: AppColors.player4,
-                                boardClickListener: (clickOffset) {})),
+                            painter: PlayersPainter(playerCurrentSpots: [
+                          _pawns[3][0],
+                          _pawns[3][1],
+                          _pawns[3][2],
+                          _pawns[3][3]
+                        ], playerColor: AppColors.player4)),
                         animation: _anim,
                       ),
                     ),
@@ -138,5 +162,31 @@ class _FludoGameState extends State<FludoGame> with TickerProviderStateMixin {
         ),
       )),
     );
+  }
+
+  _handleClick(Offset clickOffset) {
+    for (int pawnIndex = 0; pawnIndex < 4; pawnIndex++)
+      if (true) {
+        print(_currentTurn);
+        print(pawnIndex);
+
+        _selectedPawnIndex = pawnIndex;
+
+        _forwardAnimCont.reset();
+        _anim = Tween(begin: [
+          _playerTracks[_currentTurn][pawnIndex][currentPost],
+          _playerTracks[_currentTurn][1][0],
+          _playerTracks[_currentTurn][2][0],
+          _playerTracks[_currentTurn][3][0]
+        ], end: [
+          _playerTracks[_currentTurn][pawnIndex][--currentPost],
+          _playerTracks[_currentTurn][1][0],
+          _playerTracks[_currentTurn][2][0],
+          _playerTracks[_currentTurn][3][0]
+        ]).animate(_forwardAnimCont);
+        _forwardAnimCont.forward();
+
+        break;
+      }
   }
 }

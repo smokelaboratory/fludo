@@ -1,16 +1,13 @@
-import 'package:fludo/colors.dart';
 import 'package:flutter/cupertino.dart';
 import 'package:flutter/material.dart';
 
 class PlayersPainter extends CustomPainter {
   List<Rect> playerCurrentSpots;
-  Function(Offset) boardClickListener;
   Color playerColor;
 
   PlayersPainter(
       {@required this.playerCurrentSpots,
-      @required this.playerColor,
-      @required this.boardClickListener});
+      @required this.playerColor});
 
   double _playerSize, _playerInnerSize, _stepSize;
   Paint _playerPaint = Paint()..style = PaintingStyle.fill;
@@ -34,12 +31,6 @@ class PlayersPainter extends CustomPainter {
           playerColor);
   }
 
-  @override
-  bool hitTest(Offset position) {
-    boardClickListener(position);
-    return super.hitTest(position);
-  }
-
   void _drawPlayerShape(Canvas canvas, Rect rect, Color color) {
     _playerPaint.color = color;
     canvas.drawCircle(rect.center, _playerSize, _playerPaint);
@@ -53,5 +44,10 @@ class PlayersPainter extends CustomPainter {
   @override
   bool shouldRepaint(CustomPainter oldDelegate) {
     return true;
+  }
+
+  @override
+  bool hitTest(Offset position) {
+    return false; //to pass through click below the painter
   }
 }
