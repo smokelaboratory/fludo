@@ -2,12 +2,11 @@ import 'package:flutter/cupertino.dart';
 import 'package:flutter/material.dart';
 
 class PlayersPainter extends CustomPainter {
-  List<Rect> playerCurrentSpots;
+  Offset playerCurrentSpot;
   Color playerColor;
 
   PlayersPainter(
-      {@required this.playerCurrentSpots,
-      @required this.playerColor});
+      {@required this.playerCurrentSpot, @required this.playerColor});
 
   double _playerSize, _playerInnerSize, _stepSize;
   Paint _playerPaint = Paint()..style = PaintingStyle.fill;
@@ -22,23 +21,17 @@ class PlayersPainter extends CustomPainter {
     _playerSize = _stepSize / 3;
     _playerInnerSize = _playerSize / 2;
 
-    print(playerCurrentSpots);
-    for (int index = 0; index < playerCurrentSpots.length; index++)
-      _drawPlayerShape(
-          canvas,
-          playerCurrentSpots[index] ??
-              Rect.fromLTWH(0, 0, _playerSize, _playerSize),
-          playerColor);
+    _drawPlayerShape(canvas, playerCurrentSpot, playerColor);
   }
 
-  void _drawPlayerShape(Canvas canvas, Rect rect, Color color) {
+  void _drawPlayerShape(Canvas canvas, Offset pos, Color color) {
     _playerPaint.color = color;
-    canvas.drawCircle(rect.center, _playerSize, _playerPaint);
-    canvas.drawCircle(rect.center, _playerSize, _strokePaint);
+    canvas.drawCircle(pos, _playerSize, _playerPaint);
+    canvas.drawCircle(pos, _playerSize, _strokePaint);
 
     _playerPaint.color = Colors.white;
-    canvas.drawCircle(rect.center, _playerInnerSize, _playerPaint);
-    canvas.drawCircle(rect.center, _playerInnerSize, _strokePaint);
+    canvas.drawCircle(pos, _playerInnerSize, _playerPaint);
+    canvas.drawCircle(pos, _playerInnerSize, _strokePaint);
   }
 
   @override

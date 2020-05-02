@@ -4,6 +4,8 @@ import 'package:fludo/colors.dart';
 import 'package:fludo/players.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
+import 'package:provider/provider.dart';
+import 'package:fludo/state_notifier.dart';
 
 class FludoGame extends StatefulWidget {
   @override
@@ -11,180 +13,189 @@ class FludoGame extends StatefulWidget {
 }
 
 class _FludoGameState extends State<FludoGame> with TickerProviderStateMixin {
-  AnimationController _forwardAnimCont;
-  AnimationController _reverseAnimCont;
-  Animation<List<Rect>> _anim;
+  List<List<AnimationController>> _playerAnimContList = List();
+  List<List<Animation<Offset>>> _playerAnimList = List();
 
-  int currentPost = 50, _currentTurn = 0, _selectedPawnIndex;
+  int _stepCounter = 0, _diceNumber = 5, _currentTurn = 0, _selectedPawnIndex;
   List<List<List<Rect>>> _playerTracks;
-  List<List<Rect>> _pawns = List();
-  List<List<int>> _pawnCurrentTrackIndex = List();
+  List<List<MapEntry<int, Rect>>> _pawnCurrentStepInfo =
+      List(); //step index, rect
+  StateNotifier _stateNotifier;
 
   @override
   void initState() {
     super.initState();
 
-    _reverseAnimCont =
-        AnimationController(vsync: this, duration: Duration(milliseconds: 15));
-    _forwardAnimCont =
-        AnimationController(vsync: this, duration: Duration(milliseconds:15));
-
     SystemChrome.setEnabledSystemUIOverlays([]);
 
-    _forwardAnimCont.addStatusListener((status) {
-      if (status == AnimationStatus.completed) {
-        if (currentPost !=0) {
-          _forwardAnimCont.reset();
-          _anim = Tween(begin: [
-            _playerTracks[_currentTurn][_selectedPawnIndex][currentPost],
-            _playerTracks[_currentTurn][1][0],
-            _playerTracks[_currentTurn][2][0],
-            _playerTracks[_currentTurn][3][0]
-          ], end: [
-            _playerTracks[_currentTurn][_selectedPawnIndex][--currentPost],
-            _playerTracks[_currentTurn][1][0],
-            _playerTracks[_currentTurn][2][0],
-            _playerTracks[_currentTurn][3][0]
-          ]).animate(_forwardAnimCont);
-          _forwardAnimCont.forward();
-        }
-        // else
-        // _currentTurn = (_currentTurn + 1) % 4;
-      }
-    });
+    _stateNotifier = StateNotifier();
 
     WidgetsBinding.instance.addPostFrameCallback((_) {
-      setState(() {
-        //saves initial players' positions in the [_players] list
-        for (int playerIndex = 0;
-            playerIndex < _playerTracks.length;
-            playerIndex++) {
-          List<Rect> player = List();
-          for (int trackIndex = 0;
-              trackIndex < _playerTracks[playerIndex].length;
-              trackIndex++)
-            player.add(_playerTracks[playerIndex][trackIndex][0]);
+      for (int playerIndex = 0;
+          playerIndex < _playerTracks.length;
+          playerIndex++) {
+        List<Animation<Offset>> currentPlayerAnimList = List();
+        List<AnimationController> currentPlayerAnimContList = List();
+        List<MapEntry<int, Rect>> currentStepInfoList = List();
+        for (int pawnIndex = 0;
+            pawnIndex < _playerTracks[playerIndex].length;
+            pawnIndex++) {
+          AnimationController aninCont = AnimationController(
+              duration: Duration(milliseconds: 400), vsync: this);
+          aninCont.addStatusListener((status) {
+            if (status == AnimationStatus.completed) {
+              _stepCounter++;
 
-          _pawnCurrentTrackIndex.add([0, 0, 0, 0]); //current position
-          _pawns.add(player);
+              //update current step info in the [_pawnCurrentStepInfo] list
+              var currentIndex =
+                  _pawnCurrentStepInfo[_currentTurn][_selectedPawnIndex].key +
+                      1;
+              var currentStepInfo = MapEntry(
+                  currentIndex,
+                  _playerTracks[_currentTurn][_selectedPawnIndex]
+                      [currentIndex]);
+              _pawnCurrentStepInfo[_currentTurn][_selectedPawnIndex] =
+                  currentStepInfo;
+
+              if (_stepCounter != _diceNumber) {
+                //animate one step ahead
+                var animCont =
+                    _playerAnimContList[_currentTurn][_selectedPawnIndex];
+                _playerAnimList[_currentTurn][_selectedPawnIndex] = Tween(
+                        begin: currentStepInfo.value.center,
+                        end: _playerTracks[_currentTurn][_selectedPawnIndex]
+                                [currentIndex + 1]
+                            .center)
+                    .animate(animCont);
+                animCont.forward(from: 0.0);
+              } else {
+                _currentTurn = (_currentTurn + 1) %
+                    4; //change turn after animation completes
+                _stepCounter = 0; //reset step counter for next turn
+              }
+            }
+          });
+          currentPlayerAnimContList.add(aninCont);
+          currentPlayerAnimList.add(Tween(
+                  begin: _playerTracks[playerIndex][pawnIndex][0].center,
+                  end: _playerTracks[playerIndex][pawnIndex][1].center)
+              .animate(aninCont));
+          currentStepInfoList
+              .add(MapEntry(0, _playerTracks[playerIndex][pawnIndex][0]));
         }
+        _playerAnimContList.add(currentPlayerAnimContList);
+        _playerAnimList.add(currentPlayerAnimList);
+        _pawnCurrentStepInfo.add(currentStepInfoList);
+      }
 
-        _anim = Tween<List<Rect>>(begin: _pawns[0], end: _pawns[0])
-            .animate(_forwardAnimCont);
-      });
+      _stateNotifier.rebuildState();
     });
   }
 
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      body: Center(
-          child: Container(
-        color: Colors.white,
-        margin: const EdgeInsets.all(20),
-        child: AspectRatio(
-          aspectRatio: 1,
-          child: Stack(
-            children: <Widget>[
-              SizedBox.expand(
-                child: CustomPaint(
-                  painter:
-                      BoardPainter(trackCalculationListener: (playerTracks) {
-                    //rebuild player painter with provider
-                    _playerTracks = playerTracks;
-                  }),
+      body: ChangeNotifierProvider(
+        create: (_) => _stateNotifier,
+        child: Center(
+            child: Container(
+          color: Colors.white,
+          margin: const EdgeInsets.all(20),
+          child: AspectRatio(
+            aspectRatio: 1,
+            child: Stack(
+              children: <Widget>[
+                SizedBox.expand(
+                  child: CustomPaint(
+                    painter:
+                        BoardPainter(trackCalculationListener: (playerTracks) {
+                      _playerTracks = playerTracks;
+                    }),
+                  ),
                 ),
-              ),
-              SizedBox.expand(child: CustomPaint(
-                painter: ClickSurface(clickOffset: (clickOffset) {
-                  //blink who's turn
-                  _handleClick(clickOffset);
-                }),
-              )),
-              _playerTracks == null
-                  ? Container()
-                  : SizedBox.expand(
-                      child: AnimatedBuilder(
-                        builder: (_, child) => CustomPaint(
-                            painter: PlayersPainter(playerCurrentSpots: [
-                          _anim.value[0],
-                          _anim.value[1],
-                          _anim.value[2],
-                          _anim.value[3]
-                        ], playerColor: AppColors.player1)),
-                        animation: _anim,
+                SizedBox.expand(child: CustomPaint(
+                  painter: ClickSurface(clickOffset: (clickOffset) {
+                    //blink who's turn
+                    _handleClick(clickOffset);
+                  }),
+                )),
+                Consumer<StateNotifier>(builder: (_, notifier, __) {
+                  if (notifier.shoulPaintPlayers)
+                    return SizedBox.expand(
+                      child: Stack(
+                        children: _buildPlayerPawns(),
                       ),
-                    ),
-              _playerTracks == null
-                  ? Container()
-                  : SizedBox.expand(
-                      child: AnimatedBuilder(
-                        builder: (_, child) => CustomPaint(
-                            painter: PlayersPainter(playerCurrentSpots: [
-                          _pawns[1][0],
-                          _pawns[1][1],
-                          _pawns[1][2],
-                          _pawns[1][3]
-                        ], playerColor: AppColors.player2)),
-                        animation: _anim,
-                      ),
-                    ),
-              _playerTracks == null
-                  ? Container()
-                  : SizedBox.expand(
-                      child: AnimatedBuilder(
-                        builder: (_, child) => CustomPaint(
-                            painter: PlayersPainter(playerCurrentSpots: [
-                          _pawns[2][0],
-                          _pawns[2][1],
-                          _pawns[2][2],
-                          _pawns[2][3]
-                        ], playerColor: AppColors.player3)),
-                        animation: _anim,
-                      ),
-                    ),
-              _playerTracks == null
-                  ? Container()
-                  : SizedBox.expand(
-                      child: AnimatedBuilder(
-                        builder: (_, child) => CustomPaint(
-                            painter: PlayersPainter(playerCurrentSpots: [
-                          _pawns[3][0],
-                          _pawns[3][1],
-                          _pawns[3][2],
-                          _pawns[3][3]
-                        ], playerColor: AppColors.player4)),
-                        animation: _anim,
-                      ),
-                    ),
-            ],
+                    );
+                  else
+                    return Container();
+                })
+              ],
+            ),
           ),
-        ),
-      )),
+        )),
+      ),
     );
   }
 
-  _handleClick(Offset clickOffset) {
-    for (int pawnIndex = 0; pawnIndex < 4; pawnIndex++)
-      if (true) {
-        print(_currentTurn);
-        print(pawnIndex);
+  List<Widget> _buildPlayerPawns() {
+    List<Widget> playerPawns = List();
 
+    for (int playerIndex = 0; playerIndex < 4; playerIndex++) {
+      Color playerColor;
+      switch (playerIndex) {
+        case 0:
+          playerColor = AppColors.player1;
+          break;
+        case 1:
+          playerColor = AppColors.player2;
+          break;
+        case 2:
+          playerColor = AppColors.player3;
+          break;
+        default:
+          playerColor = AppColors.player4;
+      }
+      for (int pawnIndex = 0; pawnIndex < 4; pawnIndex++)
+        playerPawns.add(SizedBox.expand(
+          child: AnimatedBuilder(
+            builder: (_, child) => CustomPaint(
+                painter: PlayersPainter(
+                    playerCurrentSpot:
+                        _playerAnimList[playerIndex][pawnIndex].value,
+                    playerColor: playerColor)),
+            animation: _playerAnimList[playerIndex][pawnIndex],
+          ),
+        ));
+    }
+
+    return playerPawns;
+  }
+
+  _handleClick(Offset clickOffset) {
+    for (int pawnIndex = 0;
+        pawnIndex < _pawnCurrentStepInfo[_currentTurn].length;
+        pawnIndex++)
+      if (_pawnCurrentStepInfo[_currentTurn][pawnIndex]
+          .value
+          .contains(clickOffset)) {
         _selectedPawnIndex = pawnIndex;
 
-        _forwardAnimCont.reset();
-        _anim = Tween(begin: [
-          _playerTracks[_currentTurn][pawnIndex][currentPost],
-          _playerTracks[_currentTurn][1][0],
-          _playerTracks[_currentTurn][2][0],
-          _playerTracks[_currentTurn][3][0]
-        ], end: [
-          _playerTracks[_currentTurn][pawnIndex][--currentPost],
-          _playerTracks[_currentTurn][1][0],
-          _playerTracks[_currentTurn][2][0],
-          _playerTracks[_currentTurn][3][0]
-        ]).animate(_forwardAnimCont);
-        _forwardAnimCont.forward();
+        var currentIndex =
+            _pawnCurrentStepInfo[_currentTurn][_selectedPawnIndex].key;
+        var currentStepInfo = MapEntry(currentIndex,
+            _playerTracks[_currentTurn][_selectedPawnIndex][currentIndex]);
+        _pawnCurrentStepInfo[_currentTurn][_selectedPawnIndex] =
+            currentStepInfo;
+
+          //animate one step ahead
+          var animCont = _playerAnimContList[_currentTurn][_selectedPawnIndex];
+          _playerAnimList[_currentTurn][_selectedPawnIndex] = Tween(
+                  begin: currentStepInfo.value.center,
+                  end: _playerTracks[_currentTurn][_selectedPawnIndex]
+                          [currentIndex + 1]
+                      .center)
+              .animate(animCont);
+          animCont.forward(from: 0.0);
 
         break;
       }
