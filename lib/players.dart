@@ -12,14 +12,14 @@ class PlayersPainter extends CustomPainter {
   Paint _playerPaint = Paint()..style = PaintingStyle.fill;
   Paint _strokePaint = Paint()
     ..style = PaintingStyle.stroke
-    ..strokeWidth = 2
+    ..strokeWidth = 1.5
     ..color = Colors.black;
 
   @override
   void paint(Canvas canvas, Size size) {
     _stepSize = size.width / 15;
     _playerSize = _stepSize / 3;
-    _playerInnerSize = _playerSize / 2;
+    _playerInnerSize = _playerSize / 2.5;
 
     _drawPlayerShape(canvas, playerCurrentSpot, playerColor);
   }
@@ -40,7 +40,5 @@ class PlayersPainter extends CustomPainter {
   }
 
   @override
-  bool hitTest(Offset position) {
-    return false; //to pass through click below the painter
-  }
+  bool hitTest(Offset position) => false;
 }
