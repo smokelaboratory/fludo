@@ -40,5 +40,5 @@ class PlayersPainter extends CustomPainter {
   }
 
   @override
-  bool hitTest(Offset position) => false;
+  bool hitTest(Offset position) => false; //to pass touches to layer beneath
 }

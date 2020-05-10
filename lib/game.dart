@@ -20,8 +20,13 @@ class _FludoGameState extends State<FludoGame> with TickerProviderStateMixin {
   List<List<AnimationController>> _playerAnimContList = List();
   List<List<Animation<Offset>>> _playerAnimList = List();
   List<Color> bgColors = [Colors.cyan[600], Colors.cyan, Colors.cyan[400]];
+  bool _provideFreeTurn = false;
 
-  int _stepCounter = 0, _diceNumber = 0, _currentTurn = 0, _selectedPawnIndex;
+  int _stepCounter = 0,
+      _diceNumber = 0,
+      _currentTurn = 0,
+      _selectedPawnIndex,
+      _maxTrackIndex = 57;
   List<List<List<Rect>>> _playerTracks;
   List<List<MapEntry<int, Rect>>> _pawnCurrentStepInfo =
       List(); //step index, rect
@@ -121,7 +126,11 @@ class _FludoGameState extends State<FludoGame> with TickerProviderStateMixin {
                     ),
                   ),
                   RaisedButton(onPressed: () {
-                    _diceNumber = 1 + Random().nextInt(6);
+                    if (_diceNumber == 0) {
+                      _diceNumber = 1 + Random().nextInt(6);
+                      print(_diceNumber);
+                      _checkDiceResultValidity();
+                    }
                   })
                 ],
               ),
@@ -208,6 +217,17 @@ class _FludoGameState extends State<FludoGame> with TickerProviderStateMixin {
         if (_pawnCurrentStepInfo[_currentTurn][pawnIndex]
             .value
             .contains(clickOffset)) {
+          var clickedPawnIndex =
+              _pawnCurrentStepInfo[_currentTurn][pawnIndex].key;
+
+          if (clickedPawnIndex == 0) {
+            if (_diceNumber == 6)
+              _diceNumber = 1; //to move pawn out of the house when 6 is rolled
+            else
+              break;  //disallow pawn selection because 6 is not rolled and the pawn is in house
+          } else if (clickedPawnIndex + _diceNumber > _maxTrackIndex)
+            break; //disallow pawn selection because dice number is more than step left
+
           _highlightAnimCont.reset();
           _selectedPawnIndex = pawnIndex;
 
@@ -218,11 +238,28 @@ class _FludoGameState extends State<FludoGame> with TickerProviderStateMixin {
     }
   }
 
+  _checkDiceResultValidity() {
+    List<Rect> validPawnsToPlay = List();
+
+    _pawnCurrentStepInfo[_currentTurn].forEach((stepInfo) {
+      if (stepInfo.key != 0) {
+        if (stepInfo.key + _diceNumber <= _maxTrackIndex)
+          validPawnsToPlay.add(stepInfo.value);
+      } else if (_diceNumber == 6) validPawnsToPlay.add(stepInfo.value);
+    });
+
+    if (validPawnsToPlay.length == 0)
+      _changeTurn();
+    else
+      _provideFreeTurn = _diceNumber == 6;
+  }
+
   _movePawn() {
     //update current step info in the [_pawnCurrentStepInfo] list
-    var currentIndex = _pawnCurrentStepInfo[_currentTurn][_selectedPawnIndex]
-            .key +
-        (_stepCounter == 0 ? 0 : 1); //condition to avoid adding 1 for 1st step
+    var currentIndex = min(
+        _pawnCurrentStepInfo[_currentTurn][_selectedPawnIndex].key +
+            (_stepCounter == 0 ? 0 : 1),
+        _maxTrackIndex); //condition to avoid adding 1 for 1st step
     var currentStepInfo = MapEntry(currentIndex,
         _playerTracks[_currentTurn][_selectedPawnIndex][currentIndex]);
     _pawnCurrentStepInfo[_currentTurn][_selectedPawnIndex] = currentStepInfo;
@@ -233,19 +270,30 @@ class _FludoGameState extends State<FludoGame> with TickerProviderStateMixin {
       _playerAnimList[_currentTurn][_selectedPawnIndex] = Tween(
               begin: currentStepInfo.value.center,
               end: _playerTracks[_currentTurn][_selectedPawnIndex]
-                      [currentIndex + 1]
+                      [min(currentIndex + 1, _maxTrackIndex)]
                   .center)
           .animate(CurvedAnimation(
               parent: animCont,
               curve: Interval(0.0, 0.5, curve: Curves.easeOutCubic)));
       animCont.forward(from: 0.0);
     } else {
-      _diceNumber = 0;
-      _currentTurn =
-          (_currentTurn + 1) % 4; //change turn after animation completes
-      _stepCounter = 0; //reset step counter for next turn
+      if (currentIndex == _maxTrackIndex)
+        _provideFreeTurn =
+            true; //provide free turn as player reached destination
+
+      _changeTurn();
 
       _highlightAnimCont.repeat(reverse: true);
     }
+  }
+
+  _changeTurn() {
+    _diceNumber = 0;
+
+    _stepCounter = 0; //reset step counter for next turn
+
+    if (!_provideFreeTurn)
+      _currentTurn =
+          (_currentTurn + 1) % 4; //change turn after animation completes
   }
 }

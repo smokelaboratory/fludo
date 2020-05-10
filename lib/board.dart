@@ -397,7 +397,7 @@ class BoardPainter extends CustomPainter {
       for (int pos = 0; pos < 6; pos++) {
         var unit = Rect.fromLTWH(
             pos * _stepSize, verticalOffset, _stepSize, _stepSize);
-
+  
         if (pos == 2) {
           var safeSpotRadius = _stepSize / 4;
           _fillPaint.color = AppColors.safeSpot;
