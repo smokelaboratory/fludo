@@ -1,6 +1,7 @@
 import 'dart:math';
 
 import 'package:fludo/board.dart';
+import 'package:fludo/collision_details.dart';
 import 'package:fludo/overlay_surface.dart';
 import 'package:fludo/colors.dart';
 import 'package:fludo/players.dart';
@@ -21,6 +22,7 @@ class _FludoGameState extends State<FludoGame> with TickerProviderStateMixin {
   List<List<Animation<Offset>>> _playerAnimList = List();
   List<Color> bgColors = [Colors.cyan[600], Colors.cyan, Colors.cyan[400]];
   bool _provideFreeTurn = false;
+  CollisionDetails _collisionDetails = CollisionDetails();
 
   int _stepCounter = 0,
       _diceNumber = 0,
@@ -28,6 +30,7 @@ class _FludoGameState extends State<FludoGame> with TickerProviderStateMixin {
       _selectedPawnIndex,
       _maxTrackIndex = 57;
   List<List<List<Rect>>> _playerTracks;
+  List<Rect> _safeSpots;
   List<List<MapEntry<int, Rect>>> _pawnCurrentStepInfo =
       List(); //step index, rect
   StateNotifier _stateNotifier;
@@ -49,6 +52,14 @@ class _FludoGameState extends State<FludoGame> with TickerProviderStateMixin {
     _highlightAnim = ColorTween(begin: Colors.transparent, end: Colors.black38)
         .animate(_highlightAnimCont);
 
+    _collisionDetails.revCont =
+        AnimationController(duration: Duration(milliseconds: 10), vsync: this)
+          ..addStatusListener((status) {
+            if (status == AnimationStatus.completed) {
+              _movePawn();
+            }
+          });
+
     WidgetsBinding.instance.addPostFrameCallback((_) {
       _initData();
 
@@ -56,6 +67,17 @@ class _FludoGameState extends State<FludoGame> with TickerProviderStateMixin {
 
       _highlightAnimCont.repeat(reverse: true);
     });
+  }
+
+  @override
+  void dispose() {
+    _playerAnimContList.forEach((controllerList) {
+      controllerList.forEach((controller) {
+        controller.dispose();
+      });
+    });
+    _collisionDetails.revCont.dispose();
+    super.dispose();
   }
 
   @override
@@ -207,6 +229,22 @@ class _FludoGameState extends State<FludoGame> with TickerProviderStateMixin {
       _playerAnimList.add(currentPlayerAnimList);
       _pawnCurrentStepInfo.add(currentStepInfoList);
     }
+
+    /**
+     * Fetch all safe spot rects
+     */
+    var playerTrack = _playerTracks[0][0];
+
+    _safeSpots = [
+      playerTrack[1],
+      playerTrack[9],
+      playerTrack[14],
+      playerTrack[22],
+      playerTrack[27],
+      playerTrack[35],
+      playerTrack[40],
+      playerTrack[48]
+    ];
   }
 
   _handleClick(Offset clickOffset) {
@@ -224,14 +262,14 @@ class _FludoGameState extends State<FludoGame> with TickerProviderStateMixin {
             if (_diceNumber == 6)
               _diceNumber = 1; //to move pawn out of the house when 6 is rolled
             else
-              break;  //disallow pawn selection because 6 is not rolled and the pawn is in house
+              break; //disallow pawn selection because 6 is not rolled and the pawn is in house
           } else if (clickedPawnIndex + _diceNumber > _maxTrackIndex)
             break; //disallow pawn selection because dice number is more than step left
 
           _highlightAnimCont.reset();
           _selectedPawnIndex = pawnIndex;
 
-          _movePawn();
+          _movePawn(considerCurrentStep: true);
 
           break;
         }
@@ -239,52 +277,123 @@ class _FludoGameState extends State<FludoGame> with TickerProviderStateMixin {
   }
 
   _checkDiceResultValidity() {
-    List<Rect> validPawnsToPlay = List();
+    var isValid = false;
 
-    _pawnCurrentStepInfo[_currentTurn].forEach((stepInfo) {
+    for (var stepInfo in _pawnCurrentStepInfo[_currentTurn]) {
       if (stepInfo.key != 0) {
-        if (stepInfo.key + _diceNumber <= _maxTrackIndex)
-          validPawnsToPlay.add(stepInfo.value);
-      } else if (_diceNumber == 6) validPawnsToPlay.add(stepInfo.value);
-    });
+        if (stepInfo.key + _diceNumber <= _maxTrackIndex) {
+          isValid = true;
+          break;
+        }
+      } else if (_diceNumber == 6) {
+        isValid = true;
+        break;
+      }
+    }
 
-    if (validPawnsToPlay.length == 0)
+    if (isValid) {
+      _provideFreeTurn = false;
       _changeTurn();
-    else
-      _provideFreeTurn = _diceNumber == 6;
+    }
   }
 
-  _movePawn() {
-    //update current step info in the [_pawnCurrentStepInfo] list
-    var currentIndex = min(
-        _pawnCurrentStepInfo[_currentTurn][_selectedPawnIndex].key +
-            (_stepCounter == 0 ? 0 : 1),
-        _maxTrackIndex); //condition to avoid adding 1 for 1st step
-    var currentStepInfo = MapEntry(currentIndex,
-        _playerTracks[_currentTurn][_selectedPawnIndex][currentIndex]);
-    _pawnCurrentStepInfo[_currentTurn][_selectedPawnIndex] = currentStepInfo;
+  _movePawn({bool considerCurrentStep = false}) {
+    int playerIndex, pawnIndex, currentStepIndex;
 
-    if (_stepCounter != _diceNumber) {
+    if (_collisionDetails.isReverse) {
+      playerIndex = _collisionDetails.targetPlayerIndex;
+      pawnIndex = _collisionDetails.pawnIndex;
+      currentStepIndex = max(
+          _pawnCurrentStepInfo[playerIndex][pawnIndex].key -
+              (considerCurrentStep ? 0 : 1),
+          0);
+    } else {
+      playerIndex = _currentTurn;
+      pawnIndex = _selectedPawnIndex;
+      currentStepIndex = min(
+          _pawnCurrentStepInfo[playerIndex][pawnIndex].key +
+              (considerCurrentStep
+                  ? 0
+                  : 1), //condition to avoid incrementing key for initial step
+          _maxTrackIndex);
+    }
+
+    //update current step info in the [_pawnCurrentStepInfo] list
+    var currentStepInfo = MapEntry(currentStepIndex,
+        _playerTracks[playerIndex][pawnIndex][currentStepIndex]);
+    _pawnCurrentStepInfo[playerIndex][pawnIndex] = currentStepInfo;
+
+    if (_collisionDetails.isReverse) {
+      if (currentStepIndex > 0) {
+        _playerAnimList[_collisionDetails.targetPlayerIndex]
+            [_collisionDetails.pawnIndex] = Tween(
+                begin: currentStepInfo.value.center,
+                end: _playerTracks[_collisionDetails.targetPlayerIndex]
+                        [_collisionDetails.pawnIndex][currentStepIndex - 1]
+                    .center)
+            .animate(CurvedAnimation(
+                parent: _collisionDetails.revCont, curve: Curves.easeOutCubic));
+        _collisionDetails.revCont.forward(from: 0.0);
+      } else {
+        _collisionDetails.isReverse = false;
+        _provideFreeTurn = true; //free turn for collision
+        _changeTurn();
+      }
+    } else if (_stepCounter != _diceNumber) {
       //animate one step ahead
-      var animCont = _playerAnimContList[_currentTurn][_selectedPawnIndex];
-      _playerAnimList[_currentTurn][_selectedPawnIndex] = Tween(
+      var animCont = _playerAnimContList[playerIndex][pawnIndex];
+      _playerAnimList[playerIndex][pawnIndex] = Tween(
               begin: currentStepInfo.value.center,
-              end: _playerTracks[_currentTurn][_selectedPawnIndex]
-                      [min(currentIndex + 1, _maxTrackIndex)]
+              end: _playerTracks[playerIndex][pawnIndex]
+                      [min(currentStepIndex + 1, _maxTrackIndex)]
                   .center)
           .animate(CurvedAnimation(
               parent: animCont,
               curve: Interval(0.0, 0.5, curve: Curves.easeOutCubic)));
       animCont.forward(from: 0.0);
     } else {
-      if (currentIndex == _maxTrackIndex)
-        _provideFreeTurn =
-            true; //provide free turn as player reached destination
+      if (_checkCollision(currentStepInfo))
+        _movePawn(considerCurrentStep: true);
+      else {
+        if (currentStepIndex == _maxTrackIndex || _diceNumber == 6)
+          _provideFreeTurn =
+              true; //provide free turn as player reached destination
 
-      _changeTurn();
-
-      _highlightAnimCont.repeat(reverse: true);
+        _changeTurn();
+      }
     }
+  }
+
+  bool _checkCollision(MapEntry<int, Rect> currentStepInfo) {
+    var currentStepCenter = currentStepInfo.value.center;
+
+    if (currentStepInfo.key <
+        52) //no need to check if the pawn has entered destination lane
+    if (!_safeSpots.any((safeSpot) {
+      //avoid checking if it has landed on a safe spot
+      return safeSpot.contains(currentStepCenter);
+    })) {
+      playerLoop:
+      for (int playerIndex = 0;
+          playerIndex < _pawnCurrentStepInfo.length;
+          playerIndex++) {
+        if (playerIndex != _currentTurn)
+          for (int pawnIndex = 0;
+              pawnIndex < _pawnCurrentStepInfo[playerIndex].length;
+              pawnIndex++) {
+            if (_pawnCurrentStepInfo[playerIndex][pawnIndex]
+                .value
+                .contains(currentStepCenter)) {
+              _collisionDetails.pawnIndex = pawnIndex;
+              _collisionDetails.targetPlayerIndex = playerIndex;
+              //todo : check for multiple collision. if yes, don't consider the collision
+              _collisionDetails.isReverse = true;
+              break playerLoop;
+            }
+          }
+      }
+    }
+    return _collisionDetails.isReverse;
   }
 
   _changeTurn() {
@@ -295,5 +404,8 @@ class _FludoGameState extends State<FludoGame> with TickerProviderStateMixin {
     if (!_provideFreeTurn)
       _currentTurn =
           (_currentTurn + 1) % 4; //change turn after animation completes
+
+    if (!_highlightAnimCont.isAnimating)
+      _highlightAnimCont.repeat(reverse: true);
   }
 }
