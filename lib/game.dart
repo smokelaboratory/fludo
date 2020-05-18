@@ -1,14 +1,20 @@
 import 'dart:math';
 
-import 'package:fludo/board.dart';
-import 'package:fludo/collision_details.dart';
-import 'package:fludo/overlay_surface.dart';
-import 'package:fludo/colors.dart';
-import 'package:fludo/players.dart';
+import 'package:fludo/board/board.dart';
+import 'package:fludo/players/collision_details.dart';
+import 'package:fludo/dice/dice_notifier.dart';
+import 'package:fludo/board/overlay_surface.dart';
+import 'package:fludo/util/colors.dart';
+import 'package:fludo/players/players.dart';
+import 'package:fludo/result/result.dart';
+import 'package:fludo/result/result_notifier.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:provider/provider.dart';
-import 'package:fludo/state_notifier.dart';
+import 'package:fludo/players/players_notifier.dart';
+
+import 'dice/dice.dart';
+import 'dice/dice_base.dart';
 
 class FludoGame extends StatefulWidget {
   @override
@@ -16,16 +22,17 @@ class FludoGame extends StatefulWidget {
 }
 
 class _FludoGameState extends State<FludoGame> with TickerProviderStateMixin {
-  Animation<Color> _highlightAnim;
-  AnimationController _highlightAnimCont;
+  Animation<Color> _playerHighlightAnim;
+  Animation<double> _diceHighlightAnim;
+  AnimationController _playerHighlightAnimCont, _diceHighlightAnimCont;
   List<List<AnimationController>> _playerAnimContList = List();
   List<List<Animation<Offset>>> _playerAnimList = List();
-  List<Color> bgColors = [Colors.cyan[600], Colors.cyan, Colors.cyan[400]];
+  List<List<int>> _winnerPawnList = List();
   bool _provideFreeTurn = false;
   CollisionDetails _collisionDetails = CollisionDetails();
 
   int _stepCounter = 0,
-      _diceNumber = 0,
+      _diceOutput = 0,
       _currentTurn = 0,
       _selectedPawnIndex,
       _maxTrackIndex = 57,
@@ -36,7 +43,10 @@ class _FludoGameState extends State<FludoGame> with TickerProviderStateMixin {
   List<Rect> _safeSpots;
   List<List<MapEntry<int, Rect>>> _pawnCurrentStepInfo =
       List(); //step index, rect
-  StateNotifier _stateNotifier;
+
+  PlayersNotifier _playerPaintNotifier;
+  ResultNotifier _resultNotifier;
+  DiceNotifier _diceNotifier;
 
   @override
   void initState() {
@@ -48,19 +58,28 @@ class _FludoGameState extends State<FludoGame> with TickerProviderStateMixin {
       DeviceOrientation.portraitDown
     ]); //force portrait mode
 
-    _stateNotifier = StateNotifier();
+    _playerPaintNotifier = PlayersNotifier();
+    _resultNotifier = ResultNotifier();
+    _diceNotifier = DiceNotifier();
 
-    _highlightAnimCont =
+    _playerHighlightAnimCont =
+        AnimationController(duration: Duration(milliseconds: 700), vsync: this);
+    _diceHighlightAnimCont =
         AnimationController(duration: Duration(seconds: 1), vsync: this);
-    _highlightAnim = ColorTween(begin: Colors.transparent, end: Colors.black38)
-        .animate(_highlightAnimCont);
+
+    _playerHighlightAnim =
+        ColorTween(begin: Colors.black12, end: Colors.black45)
+            .animate(_playerHighlightAnimCont);
+    _diceHighlightAnim =
+        Tween(begin: 30.0, end: 38.0).animate(_diceHighlightAnimCont);
 
     WidgetsBinding.instance.addPostFrameCallback((_) {
       _initData();
 
-      _stateNotifier.rebuildState();
+      _playerPaintNotifier.rebuildPaint();
 
-      _highlightAnimCont.repeat(reverse: true);
+      _highlightCurrentPlayer();
+      _diceHighlightAnimCont.repeat(reverse: true);
     });
   }
 
@@ -71,31 +90,27 @@ class _FludoGameState extends State<FludoGame> with TickerProviderStateMixin {
         controller.dispose();
       });
     });
-    _highlightAnimCont.dispose();
+    _playerHighlightAnimCont.dispose();
+    _diceHighlightAnimCont.dispose();
     super.dispose();
   }
 
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      body: ChangeNotifierProvider(
-        create: (_) => _stateNotifier,
+      body: MultiProvider(
+        providers: [
+          ChangeNotifierProvider<PlayersNotifier>(
+              create: (_) => _playerPaintNotifier),
+          ChangeNotifierProvider<ResultNotifier>(
+              create: (_) => _resultNotifier),
+          ChangeNotifierProvider<DiceNotifier>(create: (_) => _diceNotifier),
+        ],
         child: Stack(
           children: <Widget>[
             SizedBox.expand(
                 child: Container(
-              decoration: BoxDecoration(
-                  image: DecorationImage(
-                    fit: BoxFit.cover,
-                    colorFilter: ColorFilter.mode(
-                        Colors.transparent.withOpacity(0.15),
-                        BlendMode.dstATop),
-                    image: AssetImage(
-                      "images/bg.jpg",
-                    ),
-                  ),
-                  gradient: LinearGradient(
-                      colors: [...bgColors, ...bgColors.reversed])),
+              color: const Color(0xff1f0d67),
             )),
             Center(
               child: Column(
@@ -118,17 +133,17 @@ class _FludoGameState extends State<FludoGame> with TickerProviderStateMixin {
                           ),
                           SizedBox.expand(
                               child: AnimatedBuilder(
-                            animation: _highlightAnim,
+                            animation: _playerHighlightAnim,
                             builder: (_, __) => CustomPaint(
                               painter: OverlaySurface(
-                                  highlightColor: _highlightAnim.value,
+                                  highlightColor: _playerHighlightAnim.value,
                                   selectedHomeIndex: _currentTurn,
                                   clickOffset: (clickOffset) {
                                     _handleClick(clickOffset);
                                   }),
                             ),
                           )),
-                          Consumer<StateNotifier>(builder: (_, notifier, __) {
+                          Consumer<PlayersNotifier>(builder: (_, notifier, __) {
                             if (notifier.shoulPaintPlayers)
                               return SizedBox.expand(
                                 child: Stack(
@@ -137,18 +152,56 @@ class _FludoGameState extends State<FludoGame> with TickerProviderStateMixin {
                               );
                             else
                               return Container();
+                          }),
+                          Consumer<ResultNotifier>(builder: (_, notifier, __) {
+                            return SizedBox.expand(
+                                child: CustomPaint(
+                              painter: ResultPainter(notifier.ranks),
+                            ));
                           })
                         ],
                       ),
                     ),
                   ),
-                  RaisedButton(onPressed: () {
-                    if (_diceNumber == 0) {
-                      _diceNumber = 1 + Random().nextInt(6);
-                      print(_diceNumber);
-                      _checkDiceResultValidity();
-                    }
-                  })
+                  SizedBox(
+                    height: 50,
+                  ),
+                  GestureDetector(
+                    onTap: () {
+                      if (_diceHighlightAnimCont.isAnimating) {
+                        _playerHighlightAnimCont.reset();
+                        _diceHighlightAnimCont.reset();
+                        _diceNotifier.rollDice();
+                      }
+                    },
+                    child: SizedBox(
+                        width: 40,
+                        height: 40,
+                        child: Stack(children: [
+                          SizedBox.expand(
+                            child: AnimatedBuilder(
+                              animation: _diceHighlightAnim,
+                              builder: (_, __) => CustomPaint(
+                                painter:
+                                    DiceBasePainter(_diceHighlightAnim.value),
+                              ),
+                            ),
+                          ),
+                          Consumer<DiceNotifier>(builder: (_, notifier, __) {
+                            if (notifier.isRolled) {
+                              _highlightCurrentPlayer();
+                              _diceOutput = notifier.output;
+                              if (_diceOutput == 6) _straightSixesCounter++;
+                              _checkDiceResultValidity();
+                            }
+                            return SizedBox.expand(
+                              child: CustomPaint(
+                                painter: DicePaint(notifier.output),
+                              ),
+                            );
+                          })
+                        ])),
+                  ),
                 ],
               ),
             ),
@@ -224,6 +277,7 @@ class _FludoGameState extends State<FludoGame> with TickerProviderStateMixin {
       _playerAnimContList.add(currentPlayerAnimContList);
       _playerAnimList.add(currentPlayerAnimList);
       _pawnCurrentStepInfo.add(currentStepInfoList);
+      _winnerPawnList.add([]);
     }
 
     /**
@@ -244,7 +298,7 @@ class _FludoGameState extends State<FludoGame> with TickerProviderStateMixin {
   }
 
   _handleClick(Offset clickOffset) {
-    if (_diceNumber != 0) if (_stepCounter == 0) {
+    if (!_diceHighlightAnimCont.isAnimating) if (_stepCounter == 0) {
       for (int pawnIndex = 0;
           pawnIndex < _pawnCurrentStepInfo[_currentTurn].length;
           pawnIndex++)
@@ -255,14 +309,14 @@ class _FludoGameState extends State<FludoGame> with TickerProviderStateMixin {
               _pawnCurrentStepInfo[_currentTurn][pawnIndex].key;
 
           if (clickedPawnIndex == 0) {
-            if (_diceNumber == 6)
-              _diceNumber = 1; //to move pawn out of the house when 6 is rolled
+            if (_diceOutput == 6)
+              _diceOutput = 1; //to move pawn out of the house when 6 is rolled
             else
               break; //disallow pawn selection because 6 is not rolled and the pawn is in house
-          } else if (clickedPawnIndex + _diceNumber > _maxTrackIndex)
+          } else if (clickedPawnIndex + _diceOutput > _maxTrackIndex)
             break; //disallow pawn selection because dice number is more than step left
 
-          _highlightAnimCont.reset();
+          _playerHighlightAnimCont.reset();
           _selectedPawnIndex = pawnIndex;
 
           _movePawn(considerCurrentStep: true);
@@ -276,13 +330,11 @@ class _FludoGameState extends State<FludoGame> with TickerProviderStateMixin {
     var isValid = false;
 
     for (var stepInfo in _pawnCurrentStepInfo[_currentTurn]) {
-      if (_diceNumber == 6) {
-        _straightSixesCounter++;
-
+      if (_diceOutput == 6) {
         if (_straightSixesCounter ==
             3) //change turn in case of 3 straight sixes
           break;
-        else if (stepInfo.key + _diceNumber >
+        else if (stepInfo.key + _diceOutput >
             _maxTrackIndex) //ignore pawn if it can't move 6 steps
           continue;
 
@@ -290,7 +342,7 @@ class _FludoGameState extends State<FludoGame> with TickerProviderStateMixin {
         isValid = true;
         break;
       } else if (stepInfo.key != 0) {
-        if (stepInfo.key + _diceNumber <= _maxTrackIndex) {
+        if (stepInfo.key + _diceOutput <= _maxTrackIndex) {
           isValid = true;
           break;
         }
@@ -346,7 +398,7 @@ class _FludoGameState extends State<FludoGame> with TickerProviderStateMixin {
         _provideFreeTurn = true; //free turn for collision
         _changeTurn();
       }
-    } else if (_stepCounter != _diceNumber) {
+    } else if (_stepCounter != _diceOutput) {
       //animate one step forward
       _playerAnimList[playerIndex][pawnIndex] = Tween(
               begin: currentStepInfo.value.center,
@@ -362,12 +414,14 @@ class _FludoGameState extends State<FludoGame> with TickerProviderStateMixin {
         _movePawn(considerCurrentStep: true);
       else {
         if (currentStepIndex == _maxTrackIndex) {
-          _pawnCurrentStepInfo[_currentTurn].removeAt(
-              _selectedPawnIndex); //remove pawn info that reached destination
+          _winnerPawnList[_currentTurn]
+              .add(_selectedPawnIndex); //add pawn to [_winnerPawnList]
 
-          if (_pawnCurrentStepInfo[_currentTurn].isNotEmpty)
+          if (_winnerPawnList[_currentTurn].length < 4)
             _provideFreeTurn =
                 true; //if player has remaining pawns, provide free turn for reaching destination
+          else
+            _resultNotifier.rebuildPaint(_currentTurn);
         }
 
         _changeTurn();
@@ -426,12 +480,12 @@ class _FludoGameState extends State<FludoGame> with TickerProviderStateMixin {
   }
 
   _changeTurn() {
-    if (_pawnCurrentStepInfo.where((playerInfo) {
-          return playerInfo.isEmpty;
+    if (_winnerPawnList.where((playerPawns) {
+          return playerPawns.length == 4;
         }).length !=
         3) //if any 3 players have completed
     {
-      _diceNumber = 0;
+      _diceHighlightAnimCont.repeat(reverse: true);
 
       _stepCounter = 0; //reset step counter for next turn
       if (!_provideFreeTurn) {
@@ -445,10 +499,13 @@ class _FludoGameState extends State<FludoGame> with TickerProviderStateMixin {
         _straightSixesCounter = 0;
       }
 
-      if (!_highlightAnimCont.isAnimating)
-        _highlightAnimCont.repeat(reverse: true);
+      if (!_playerHighlightAnimCont.isAnimating) _highlightCurrentPlayer();
 
       _provideFreeTurn = false;
     }
+  }
+
+  _highlightCurrentPlayer() {
+    _playerHighlightAnimCont.repeat(reverse: true);
   }
 }
