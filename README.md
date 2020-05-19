@@ -17,7 +17,7 @@ Fludo is a Flutter app which uses canvas and animations to build a Ludo board ga
 
 ## Gameplay
 
-https://github.com/smokelaboratory/fludo/blob/master/gameplay.gif
+![gameplpay](https://github.com/smokelaboratory/fludo/blob/master/gameplay.gif)
 
 
 ## Roadmap
