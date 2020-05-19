@@ -1,25 +1,35 @@
+import 'dart:math';
+
 import 'package:flutter/material.dart';
 
 class DiceBasePainter extends CustomPainter {
-  final double _radius;
+  double _startAngle;
 
-  DiceBasePainter(this._radius);
+  DiceBasePainter(this._startAngle);
 
   @override
   void paint(Canvas canvas, Size size) {
-    var center = Offset(size.width / 2, size.height / 2);
+    var radius = size.width;
+
+    var center = Offset(size.width / 2, size.width / 2);
+
+    for (int arcIndex = 0; arcIndex < 12; arcIndex++) {
+      canvas.drawArc(
+          Rect.fromCircle(center: center, radius: radius),
+          _startAngle,
+          30 * pi / 180,
+          false,
+          Paint()
+            ..color = arcIndex % 2 == 0 ? Colors.orange : Colors.white
+            ..strokeWidth = 7
+            ..style = PaintingStyle.stroke);
+
+      _startAngle += 30 * pi / 180;
+    }
 
     canvas.drawCircle(
         center,
-        _radius,
-        Paint()
-          ..color = Colors.orange
-          ..style = PaintingStyle.stroke
-          ..strokeWidth = 10);
-
-    canvas.drawCircle(
-        center,
-        _radius,
+        radius,
         Paint()
           ..color = Colors.orangeAccent
           ..style = PaintingStyle.fill);

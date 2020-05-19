@@ -65,13 +65,13 @@ class _FludoGameState extends State<FludoGame> with TickerProviderStateMixin {
     _playerHighlightAnimCont =
         AnimationController(duration: Duration(milliseconds: 700), vsync: this);
     _diceHighlightAnimCont =
-        AnimationController(duration: Duration(seconds: 1), vsync: this);
+        AnimationController(duration: Duration(seconds: 5), vsync: this);
 
     _playerHighlightAnim =
         ColorTween(begin: Colors.black12, end: Colors.black45)
             .animate(_playerHighlightAnimCont);
     _diceHighlightAnim =
-        Tween(begin: 30.0, end: 38.0).animate(_diceHighlightAnimCont);
+        Tween(begin: 0.0, end: 2 * pi).animate(_diceHighlightAnimCont);
 
     WidgetsBinding.instance.addPostFrameCallback((_) {
       _initData();
@@ -79,7 +79,7 @@ class _FludoGameState extends State<FludoGame> with TickerProviderStateMixin {
       _playerPaintNotifier.rebuildPaint();
 
       _highlightCurrentPlayer();
-      _diceHighlightAnimCont.repeat(reverse: true);
+      _highlightDice();
     });
   }
 
@@ -420,8 +420,11 @@ class _FludoGameState extends State<FludoGame> with TickerProviderStateMixin {
           if (_winnerPawnList[_currentTurn].length < 4)
             _provideFreeTurn =
                 true; //if player has remaining pawns, provide free turn for reaching destination
-          else
+          else {
             _resultNotifier.rebuildPaint(_currentTurn);
+            _provideFreeTurn =
+                false; //to discard free turn if he completes the game
+          }
         }
 
         _changeTurn();
@@ -485,7 +488,7 @@ class _FludoGameState extends State<FludoGame> with TickerProviderStateMixin {
         }).length !=
         3) //if any 3 players have completed
     {
-      _diceHighlightAnimCont.repeat(reverse: true);
+      _highlightDice();
 
       _stepCounter = 0; //reset step counter for next turn
       if (!_provideFreeTurn) {
@@ -493,11 +496,13 @@ class _FludoGameState extends State<FludoGame> with TickerProviderStateMixin {
           //to ignore winners
           _currentTurn =
               (_currentTurn + 1) % 4; //change turn after animation completes
-          if (_pawnCurrentStepInfo[_currentTurn].isNotEmpty) break;
+          if (_winnerPawnList[_currentTurn].length != 4)
+            break; //select player if he is not yet a winner
         } while (true);
-
         _straightSixesCounter = 0;
-      }
+      } else if (_diceOutput != 6)
+        _straightSixesCounter =
+            0; //reset 6s counter if free turn is provided by other means
 
       if (!_playerHighlightAnimCont.isAnimating) _highlightCurrentPlayer();
 
@@ -507,5 +512,9 @@ class _FludoGameState extends State<FludoGame> with TickerProviderStateMixin {
 
   _highlightCurrentPlayer() {
     _playerHighlightAnimCont.repeat(reverse: true);
+  }
+
+  _highlightDice() {
+    _diceHighlightAnimCont.repeat();
   }
 }
