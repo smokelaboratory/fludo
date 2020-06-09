@@ -4,14 +4,14 @@
 # Fludo
 
 [![License](https://img.shields.io/badge/License-Apache%202.0-2196F3.svg?style=for-the-badge)](https://opensource.org/licenses/Apache-2.0)
-[![language](https://img.shields.io/github/languages/top/smokelaboratory/fludo.svg?style=for-the-badge&colorB=f18e33)](https://kotlinlang.org/)
+[![language](https://img.shields.io/github/languages/top/smokelaboratory/fludo.svg?style=for-the-badge&colorB=00bfab)](https://kotlinlang.org/)
 
 Fludo is a Flutter app which uses canvas and animations to build a Ludo board game.
 
 ## Features
 
 * Roll dice & move your pawns
-* Kill oponent's pawns
+* Kill opponent's pawns
 * Protect your pawns on safe spots
 * Free turns as per basic ludo rules
 
@@ -25,6 +25,7 @@ Fludo is a Flutter app which uses canvas and animations to build a Ludo board ga
 * Music integration
 * UI/UX improvements
 * Multiplayer support (Firebase)
+* Web support
 
 ### Pull Request
 To generate a pull request, please consider following [Pull Request Template](https://github.com/smokelaboratory/fludo/blob/master/PULL_REQUEST_TEMPLATE.md).
