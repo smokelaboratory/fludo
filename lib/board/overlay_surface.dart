@@ -3,12 +3,12 @@ import 'package:flutter/material.dart';
 
 class OverlaySurface extends CustomPainter {
   Function(Offset) clickOffset;
-  int selectedHomeIndex;
-  Color highlightColor;
+  int? selectedHomeIndex;
+  Color? highlightColor;
   OverlaySurface(
-      {@required this.clickOffset,
-      @required this.selectedHomeIndex,
-      @required this.highlightColor});
+      {required this.clickOffset,
+      required this.selectedHomeIndex,
+      required this.highlightColor});
 
   Paint _fillPaint = Paint()..style = PaintingStyle.fill;
 
@@ -34,7 +34,7 @@ class OverlaySurface extends CustomPainter {
         home = Rect.fromLTWH(0, homeStartOffset, homeSize, homeSize);
     }
 
-    _fillPaint.color = highlightColor;
+    _fillPaint.color = highlightColor!;
     canvas.drawRect(home, _fillPaint);
   }
 

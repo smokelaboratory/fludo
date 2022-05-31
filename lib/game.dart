@@ -22,37 +22,35 @@ class FludoGame extends StatefulWidget {
 }
 
 class _FludoGameState extends State<FludoGame> with TickerProviderStateMixin {
-  Animation<Color> _playerHighlightAnim;
-  Animation<double> _diceHighlightAnim;
-  AnimationController _playerHighlightAnimCont, _diceHighlightAnimCont;
-  List<List<AnimationController>> _playerAnimContList = List();
-  List<List<Animation<Offset>>> _playerAnimList = List();
-  List<List<int>> _winnerPawnList = List();
+  late Animation<Color?> _playerHighlightAnim;
+  late Animation<double> _diceHighlightAnim;
+  late AnimationController _playerHighlightAnimCont, _diceHighlightAnimCont;
+  List<List<AnimationController>> _playerAnimContList = [];
+  List<List<Animation<Offset>>> _playerAnimList = [];
+  List<List<int>> _winnerPawnList = [];
   bool _provideFreeTurn = false;
   CollisionDetails _collisionDetails = CollisionDetails();
-
   int _stepCounter = 0,
       _diceOutput = 0,
       _currentTurn = 0,
-      _selectedPawnIndex,
       _maxTrackIndex = 57,
       _straightSixesCounter = 0,
       _forwardStepAnimTimeInMillis = 250,
       _reverseStepAnimTimeInMillis = 60;
-  List<List<List<Rect>>> _playerTracks;
-  List<Rect> _safeSpots;
-  List<List<MapEntry<int, Rect>>> _pawnCurrentStepInfo =
-      List(); //step index, rect
-
-  PlayersNotifier _playerPaintNotifier;
-  ResultNotifier _resultNotifier;
-  DiceNotifier _diceNotifier;
+  List<List<MapEntry<int, Rect>>> _pawnCurrentStepInfo = []; //step index, rect
+  late List<List<List<Rect>>> _playerTracks;
+  late List<Rect> _safeSpots;
+  late int _selectedPawnIndex;
+  late PlayersNotifier _playerPaintNotifier;
+  late ResultNotifier _resultNotifier;
+  late DiceNotifier _diceNotifier;
 
   @override
   void initState() {
     super.initState();
 
-    SystemChrome.setEnabledSystemUIOverlays([]); //full screen
+    SystemChrome.setEnabledSystemUIMode(SystemUiMode.manual,
+        overlays: []); //full screen
     SystemChrome.setPreferredOrientations([
       DeviceOrientation.portraitUp,
       DeviceOrientation.portraitDown
@@ -100,11 +98,11 @@ class _FludoGameState extends State<FludoGame> with TickerProviderStateMixin {
     return Scaffold(
       body: MultiProvider(
         providers: [
-          ChangeNotifierProvider<PlayersNotifier>(
+          ChangeNotifierProvider<PlayersNotifier?>(
               create: (_) => _playerPaintNotifier),
-          ChangeNotifierProvider<ResultNotifier>(
+          ChangeNotifierProvider<ResultNotifier?>(
               create: (_) => _resultNotifier),
-          ChangeNotifierProvider<DiceNotifier>(create: (_) => _diceNotifier),
+          ChangeNotifierProvider<DiceNotifier?>(create: (_) => _diceNotifier),
         ],
         child: Stack(
           children: <Widget>[
@@ -192,6 +190,7 @@ class _FludoGameState extends State<FludoGame> with TickerProviderStateMixin {
                               _highlightCurrentPlayer();
                               _diceOutput = notifier.output;
                               if (_diceOutput == 6) _straightSixesCounter++;
+
                               _checkDiceResultValidity();
                             }
                             return SizedBox.expand(
@@ -212,7 +211,7 @@ class _FludoGameState extends State<FludoGame> with TickerProviderStateMixin {
   }
 
   List<Widget> _buildPawnWidgets() {
-    List<Widget> playerPawns = List();
+    List<Widget> playerPawns = [];
 
     for (int playerIndex = 0; playerIndex < 4; playerIndex++) {
       Color playerColor;
@@ -249,9 +248,9 @@ class _FludoGameState extends State<FludoGame> with TickerProviderStateMixin {
     for (int playerIndex = 0;
         playerIndex < _playerTracks.length;
         playerIndex++) {
-      List<Animation<Offset>> currentPlayerAnimList = List();
-      List<AnimationController> currentPlayerAnimContList = List();
-      List<MapEntry<int, Rect>> currentStepInfoList = List();
+      List<Animation<Offset>> currentPlayerAnimList = [];
+      List<AnimationController> currentPlayerAnimContList = [];
+      List<MapEntry<int, Rect>> currentStepInfoList = [];
 
       for (int pawnIndex = 0;
           pawnIndex < _playerTracks[playerIndex].length;
@@ -353,13 +352,13 @@ class _FludoGameState extends State<FludoGame> with TickerProviderStateMixin {
   }
 
   _movePawn({bool considerCurrentStep = false}) {
-    int playerIndex, pawnIndex, currentStepIndex;
+    int? playerIndex, pawnIndex, currentStepIndex;
 
     if (_collisionDetails.isReverse) {
       playerIndex = _collisionDetails.targetPlayerIndex;
       pawnIndex = _collisionDetails.pawnIndex;
       currentStepIndex = max(
-          _pawnCurrentStepInfo[playerIndex][pawnIndex].key -
+          _pawnCurrentStepInfo[playerIndex!][pawnIndex!].key -
               (considerCurrentStep ? 0 : 1),
           0);
     } else {
@@ -383,11 +382,11 @@ class _FludoGameState extends State<FludoGame> with TickerProviderStateMixin {
     if (_collisionDetails.isReverse) {
       if (currentStepIndex > 0) {
         //animate one step reverse
-        _playerAnimList[_collisionDetails.targetPlayerIndex]
-            [_collisionDetails.pawnIndex] = Tween(
+        _playerAnimList[_collisionDetails.targetPlayerIndex!]
+            [_collisionDetails.pawnIndex!] = Tween(
                 begin: currentStepInfo.value.center,
-                end: _playerTracks[_collisionDetails.targetPlayerIndex]
-                        [_collisionDetails.pawnIndex][currentStepIndex - 1]
+                end: _playerTracks[_collisionDetails.targetPlayerIndex!]
+                        [_collisionDetails.pawnIndex!][currentStepIndex - 1]
                     .center)
             .animate(animCont);
         animCont.forward(from: 0.0);
@@ -441,7 +440,7 @@ class _FludoGameState extends State<FludoGame> with TickerProviderStateMixin {
       //avoid checking if it has landed on a safe spot
       return safeSpot.contains(currentStepCenter);
     })) {
-      List<CollisionDetails> collisions = List();
+      List<CollisionDetails> collisions = [];
       for (int playerIndex = 0;
           playerIndex < _pawnCurrentStepInfo.length;
           playerIndex++) {
@@ -472,8 +471,8 @@ class _FludoGameState extends State<FludoGame> with TickerProviderStateMixin {
         _collisionDetails.isReverse = false;
       else {
         _collisionDetails = collisions.first;
-        _playerAnimContList[_collisionDetails.targetPlayerIndex]
-                [_collisionDetails.pawnIndex]
+        _playerAnimContList[_collisionDetails.targetPlayerIndex!]
+                [_collisionDetails.pawnIndex!]
             .duration = Duration(milliseconds: _reverseStepAnimTimeInMillis);
 
         _collisionDetails.isReverse = true;

@@ -1,14 +1,12 @@
-import 'package:flutter/cupertino.dart';
 import 'package:flutter/material.dart';
 
 class PlayersPainter extends CustomPainter {
   Offset playerCurrentSpot;
   Color playerColor;
 
-  PlayersPainter(
-      {@required this.playerCurrentSpot, @required this.playerColor});
+  PlayersPainter({required this.playerCurrentSpot, required this.playerColor});
 
-  double _playerSize, _playerInnerSize, _stepSize;
+  late double _playerSize, _playerInnerSize, _stepSize;
   Paint _playerPaint = Paint()..style = PaintingStyle.fill;
   Paint _strokePaint = Paint()
     ..style = PaintingStyle.stroke

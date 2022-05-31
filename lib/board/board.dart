@@ -5,10 +5,10 @@ import 'dart:math';
 class BoardPainter extends CustomPainter {
   Function(List<List<List<Rect>>>) trackCalculationListener;
 
-  BoardPainter({@required this.trackCalculationListener});
+  BoardPainter({required this.trackCalculationListener});
 
-  double _stepSize, _homeStartOffset, _homeSize, _canvasCenter;
-  List<List<Offset>> _homeSpotsList = List();
+  late double _stepSize, _homeStartOffset, _homeSize, _canvasCenter;
+  List<List<Offset>> _homeSpotsList = [];
 
   Paint _fillPaint = Paint()..style = PaintingStyle.fill;
   Paint _strokePaint = Paint()
@@ -30,7 +30,6 @@ class BoardPainter extends CustomPainter {
     _drawSteps(canvas, size);
 
     _calculatePlayerTracks();
-
   }
 
   @override
@@ -39,13 +38,13 @@ class BoardPainter extends CustomPainter {
   }
 
   void _calculatePlayerTracks() {
-    Rect prevRect;
-    Offset prevOffset;
+    late Rect prevRect;
+    late Offset prevOffset;
 
     /**
      * Player 1 track
      */
-    List<Rect> playerOneTrack = List();
+    List<Rect> playerOneTrack = [];
     for (int stepIndex = 0; stepIndex < 57; stepIndex++) {
       if (stepIndex == 0) {
         var offset = _stepSize / 2;
@@ -88,7 +87,7 @@ class BoardPainter extends CustomPainter {
     /**
      * Player 2 track
      */
-    List<Rect> playerTwoTrack = List();
+    List<Rect> playerTwoTrack = [];
 
     playerTwoTrack.addAll(playerOneTrack.sublist(13, 51));
     prevRect = playerTwoTrack.last;
@@ -109,7 +108,7 @@ class BoardPainter extends CustomPainter {
     /**
      * Player 3 track
      */
-    List<Rect> playerThreeTrack = List();
+    List<Rect> playerThreeTrack = [];
 
     playerThreeTrack.addAll(playerTwoTrack.sublist(13, 51));
     prevRect = playerThreeTrack.last;
@@ -130,7 +129,7 @@ class BoardPainter extends CustomPainter {
     /**
      * Player 4 track
      */
-    List<Rect> playerFourTrack = List();
+    List<Rect> playerFourTrack = [];
 
     playerFourTrack.addAll(playerThreeTrack.sublist(13, 51));
     prevRect = playerFourTrack.last;
@@ -151,14 +150,14 @@ class BoardPainter extends CustomPainter {
     /**
      * Add spots with tracks
      */
-    List<List<List<Rect>>> _playerTracks = List();
+    List<List<List<Rect>>> _playerTracks = [];
     for (int playerIndex = 0; playerIndex < 4; playerIndex++) {
-      List<List<Rect>> playerTrack = List();
+      List<List<Rect>> playerTrack = [];
 
       for (int spotIndex = 0;
           spotIndex < _homeSpotsList[playerIndex].length;
           spotIndex++) {
-        List<Rect> track = List();
+        List<Rect> track = [];
 
         track.add(Rect.fromCenter(
             center: _homeSpotsList[playerIndex][spotIndex],
@@ -250,7 +249,7 @@ class BoardPainter extends CustomPainter {
   }
 
   void _drawSpawnSpots(Canvas canvas, Rect innerHome, Color color) {
-    List<Offset> spotList = List();
+    List<Offset> spotList = [];
 
     _fillPaint.color = color;
     var spotOffsetOne = innerHome.width / 4;
@@ -333,7 +332,7 @@ class BoardPainter extends CustomPainter {
   }
 
   void _drawSteps(Canvas canvas, Size size) {
-    double verticalOffset;
+    late double verticalOffset;
 
     var arrowPaint = Paint()
       ..strokeWidth = 2
@@ -397,7 +396,7 @@ class BoardPainter extends CustomPainter {
       for (int pos = 0; pos < 6; pos++) {
         var unit = Rect.fromLTWH(
             pos * _stepSize, verticalOffset, _stepSize, _stepSize);
-  
+
         if (pos == 2) {
           var safeSpotRadius = _stepSize / 4;
           _fillPaint.color = AppColors.safeSpot;
