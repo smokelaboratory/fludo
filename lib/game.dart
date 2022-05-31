@@ -1,3 +1,4 @@
+import 'dart:io';
 import 'dart:math';
 
 import 'package:fludo/board/board.dart';
@@ -8,6 +9,7 @@ import 'package:fludo/util/colors.dart';
 import 'package:fludo/players/players.dart';
 import 'package:fludo/result/result.dart';
 import 'package:fludo/result/result_notifier.dart';
+import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:provider/provider.dart';
@@ -115,6 +117,10 @@ class _FludoGameState extends State<FludoGame> with TickerProviderStateMixin {
                 mainAxisSize: MainAxisSize.min,
                 children: <Widget>[
                   Container(
+                    // ignore for Mobile Platforms and Set for Web/Desktops
+                    height: !kIsWeb && (Platform.isAndroid || Platform.isIOS)
+                        ? null
+                        : MediaQuery.of(context).size.height / 1.6,
                     color: Colors.white,
                     margin: const EdgeInsets.all(20),
                     child: AspectRatio(
