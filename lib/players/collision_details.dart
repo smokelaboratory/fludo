@@ -1,4 +1,4 @@
 class CollisionDetails {
   bool isReverse = false;
-  int targetPlayerIndex, pawnIndex;
+  late int targetPlayerIndex, pawnIndex;
 }

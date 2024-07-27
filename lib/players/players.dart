@@ -6,9 +6,9 @@ class PlayersPainter extends CustomPainter {
   Color playerColor;
 
   PlayersPainter(
-      {@required this.playerCurrentSpot, @required this.playerColor});
+      {required this.playerCurrentSpot, required this.playerColor});
 
-  double _playerSize, _playerInnerSize, _stepSize;
+  late double _playerSize, _playerInnerSize, _stepSize;
   Paint _playerPaint = Paint()..style = PaintingStyle.fill;
   Paint _strokePaint = Paint()
     ..style = PaintingStyle.stroke

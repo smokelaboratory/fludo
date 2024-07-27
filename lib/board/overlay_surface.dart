@@ -6,9 +6,9 @@ class OverlaySurface extends CustomPainter {
   int selectedHomeIndex;
   Color highlightColor;
   OverlaySurface(
-      {@required this.clickOffset,
-      @required this.selectedHomeIndex,
-      @required this.highlightColor});
+      {required this.clickOffset,
+      required this.selectedHomeIndex,
+      required this.highlightColor});
 
   Paint _fillPaint = Paint()..style = PaintingStyle.fill;
 
