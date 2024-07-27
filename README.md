@@ -8,6 +8,8 @@
 
 Fludo is a Flutter app which uses canvas and animations to build a Ludo board game.
 
+[![Get it on Google Play](https://media.lisk.com/init/google_store_912cd733ee.png?auto=compress,format&fit=max&w=96&q=80)](https://play.google.com/store/apps/details?id=com.smokelaboratory.fludo)
+
 ## Features
 
 * Roll dice & move your pawns
