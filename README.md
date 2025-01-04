@@ -29,6 +29,17 @@ Fludo is a Flutter app which uses canvas and animations to build a Ludo board ga
 * Multiplayer support (Firebase)
 * Web support
 
+## Android Version Details (add local.properties)
+
+```bash
+flutter.versionName=1.0.0
+flutter.versionCode=1
+flutter.minSdkVersion=23
+flutter.targetSdkVersion=34
+flutter.compileSdkVersion=35
+flutter.buildMode=release
+```
+
 ### Pull Request
 To generate a pull request, please consider following [Pull Request Template](https://github.com/smokelaboratory/fludo/blob/master/PULL_REQUEST_TEMPLATE.md).
 
